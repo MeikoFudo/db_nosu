@@ -1,62 +1,111 @@
--- Удаление базы данных (если необходимо)
+-- Удаление базы данных 
 -- DROP DATABASE restaurant_db;
 
--- Создание таблиц
-CREATE TABLE customers (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(50),
-    phone VARCHAR(20),
-    email VARCHAR(100)
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(20)
 );
 
-CREATE TABLE menu (
-    id SERIAL PRIMARY KEY,
-    dish_name VARCHAR(50),
-    price NUMERIC(6,2)
+CREATE TABLE roles (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE tables (
+    id BIGSERIAL PRIMARY KEY,
+    number INT UNIQUE,
+    capacity INT,
+    status VARCHAR(20)
+);
+
+CREATE TABLE dishes (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    price NUMERIC(6,2),
+    category VARCHAR(50)
 );
 
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES customers(id),
-    menu_id INT REFERENCES menu(id),
-    order_date TIMESTAMP
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    open TIMESTAMP,
+    close TIMESTAMP,
+    table_number INT,
+    total DECIMAL,
+    status VARCHAR(20),
+    table_id BIGINT REFERENCES tables(id),
+    order_type VARCHAR(20),
+    dishes TEXT
+);
+
+CREATE TABLE reservations (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    table_number INT,
+    reserved_at TIMESTAMP,
+    reservation_time TIMESTAMP,
+    status VARCHAR(20)
 );
 
 -- Очистка таблиц перед вставкой тестовых данных
-TRUNCATE TABLE orders RESTART IDENTITY CASCADE;
-TRUNCATE TABLE customers RESTART IDENTITY CASCADE;
-TRUNCATE TABLE menu RESTART IDENTITY CASCADE;
+TRUNCATE TABLE orders, reservations, dishes, tables, roles, users RESTART IDENTITY CASCADE;
 
--- Список имен и фамилий для случайной генерации
-WITH name_data AS (
-    SELECT 
-        unnest(array['Ivan', 'Alexander', 'Sergey', 'Dmitry', 'Maxim', 'Nikolai', 'Andrei', 'Mikhail', 'Vladimir', 'Alexey']) AS first_name,
-        unnest(array['Ivanov', 'Petrov', 'Sidorov', 'Kozlov', 'Smirnov', 'Volkov', 'Lebedev', 'Fedorov', 'Makarov', 'Orlov']) AS last_name
+-- Вставка данных в roles
+INSERT INTO roles (name) VALUES
+('Администратор'),
+('Официант'),
+('Клиент');
+
+-- Вставка тестовых данных в users
+WITH names AS (
+    SELECT unnest(array['Ivan', 'Alexander', 'Sergey', 'Dmitry', 'Maxim']) AS name,
+           unnest(array['ivan@example.com', 'alex@example.com', 'sergey@example.com', 'dmitry@example.com', 'maxim@example.com']) AS email,
+           unnest(array['+79000000001', '+79000000002', '+79000000003', '+79000000004', '+79000000005']) AS phone
 )
--- Вставка тестовых данных в клиентов с реальными именами
-INSERT INTO customers (name, phone, email)
-SELECT
-    first_name || ' ' || last_name,  -- Генерация имени и фамилии
-    '+7' || trunc(9000000000 + random() * 100000000)::bigint,  -- Случайный номер телефона
-    'user' || trunc(random() * 1000)::int || '@example.com'  -- Случайный email
-FROM name_data
-ORDER BY random()
-LIMIT 10;
+INSERT INTO users (name, email, phone)
+SELECT name, email, phone FROM names;
 
--- Вставка тестовых данных в меню
-INSERT INTO menu (dish_name, price)
-SELECT
-    'Dish_' || trunc(random() * 100)::int,  -- Случайное название блюда
-    round((100 + random() * 500)::numeric, 2)  -- Случайная цена
-FROM generate_series(1, 10);
+-- Вставка тестовых данных в tables
+INSERT INTO tables (number, capacity, status) VALUES
+(1, 4, 'Свободен'),
+(2, 2, 'Занят'),
+(3, 6, 'Свободен');
 
--- Вставка тестовых данных в заказы
-INSERT INTO orders (customer_id, menu_id, order_date)
+-- Вставка тестовых данных в dishes
+WITH dishes_data AS (
+    SELECT unnest(array['Салат Цезарь', 'Борщ', 'Стейк', 'Паста Карбонара', 'Мороженое']) AS name,
+           unnest(array[350.00, 250.00, 800.00, 450.00, 200.00]) AS price,
+           unnest(array['Закуски', 'Супы', 'Основные блюда', 'Основные блюда', 'Десерты']) AS category
+)
+INSERT INTO dishes (name, price, category)
+SELECT name, price, category FROM dishes_data;
+
+-- Вставка тестовых данных в orders
+INSERT INTO orders (user_id, open, close, table_number, total, status, table_id, order_type, dishes)
+SELECT 
+    (random() * 5 + 1)::int,
+    NOW() - (trunc(random() * 10) || ' days')::interval,
+    NOW(),
+    (random() * 3 + 1)::int,
+    round(random() * 1000 + 500, 2),
+    'Ожидание',
+    (random() * 3 + 1)::int,
+    'В зале',
+    'Салат Цезарь, Стейк';
+
+-- Вставка тестовых данных в reservations
+INSERT INTO reservations (user_id, table_number, reserved_at, reservation_time, status)
 SELECT
-    trunc(random() * 10 + 1)::int,  -- Случайный идентификатор клиента
-    trunc(random() * 10 + 1)::int,  -- Случайный идентификатор блюда
-    NOW() - (trunc(random() * 30) || ' days')::interval  -- Случайная дата заказа (в пределах последних 30 дней)
-FROM generate_series(1, 20);
+    (random() * 5 + 1)::int,
+    (random() * 3 + 1)::int,
+    NOW() - (trunc(random() * 5) || ' days')::interval,
+    NOW() + (trunc(random() * 5 + 1) || ' days')::interval,
+    'Подтверждено';
 
 -- Проверка
-SELECT * FROM customers;
+SELECT * FROM users;
+SELECT * FROM dishes;
+SELECT * FROM orders;
+SELECT * FROM reservations;

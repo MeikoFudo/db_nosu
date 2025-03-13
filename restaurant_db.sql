@@ -1,25 +1,21 @@
--- Удаление базы данных 
+-- Удаление базы данных (если необходимо)
 -- DROP DATABASE restaurant_db;
--- В случае ошибки о существовании отношении 
--- DROP TABLE IF EXISTS orders;
--- DROP TABLE IF EXISTS menu;
--- DROP TABLE IF EXISTS customers;
 
 -- Создание таблиц
-CREATE TABLE IF NOT EXISTS customers (
+CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50),
     phone VARCHAR(20),
     email VARCHAR(100)
 );
 
-CREATE TABLE IF NOT EXISTS menu (
+CREATE TABLE menu (
     id SERIAL PRIMARY KEY,
     dish_name VARCHAR(50),
     price NUMERIC(6,2)
 );
 
-CREATE TABLE IF NOT EXISTS orders (
+CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     customer_id INT REFERENCES customers(id),
     menu_id INT REFERENCES menu(id),
